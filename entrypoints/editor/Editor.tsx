@@ -114,25 +114,25 @@ export default function Editor() {
     );
   }
 
-  async function editCaption(id: string, caption: string) {
-    const step = steps.find((s) => s.id === id);
-    if (!step) return;
-    const { previewUrl: _p, ...rest } = step;
-    await updateStep({ ...rest, caption });
+  function editCaption(id: string, caption: string) {
     setSteps((list) =>
       list.map((s) => (s.id === id ? { ...s, caption } : s)),
     );
-  }
-
-  async function editNote(id: string, note: string) {
     const step = steps.find((s) => s.id === id);
     if (!step) return;
     const { previewUrl: _p, ...rest } = step;
+    void updateStep({ ...rest, caption });
+  }
+
+  function editNote(id: string, note: string) {
     const next = note.trim() ? note : undefined;
-    await updateStep({ ...rest, note: next });
     setSteps((list) =>
       list.map((s) => (s.id === id ? { ...s, note: next } : s)),
     );
+    const step = steps.find((s) => s.id === id);
+    if (!step) return;
+    const { previewUrl: _p, ...rest } = step;
+    void updateStep({ ...rest, note: next });
   }
 
   async function removeStep(id: string) {
