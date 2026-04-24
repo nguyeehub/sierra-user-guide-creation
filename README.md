@@ -25,27 +25,37 @@ Sierra turns your clicks into a clean, annotated walkthrough. Instead of writing
 
 ## Install
 
-Download the latest zip from the [Releases page](https://github.com/nguyeehub/sierra-user-guide-creation/releases/latest), then:
+**1. Open the [Releases page](https://github.com/nguyeehub/sierra-user-guide-creation/releases) and click the latest release.**
 
-**1. Open `chrome://extensions` and enable Developer mode.**
+<p align="center">
+  <img src="docs/github-releases.png" width="600" alt="Click Releases on GitHub" />
+</p>
+
+**2. Download the `sierra-X.Y.Z-chrome.zip` asset.**
+
+<p align="center">
+  <img src="docs/download-zip.png" width="600" alt="Download the zip asset" />
+</p>
+
+**3. Unzip the file, then open `chrome://extensions` and enable Developer mode.**
 
 <p align="center">
   <img src="docs/developer-mode.png" width="220" alt="Developer mode toggle" />
 </p>
 
-**2. Click Load unpacked.**
+**4. Click Load unpacked.**
 
 <p align="center">
   <img src="docs/load-unpacked.png" width="600" alt="Load unpacked button" />
 </p>
 
-**3. Select the unzipped `sierra-0.1.0-chrome` folder.**
+**5. Select the unzipped `sierra-0.1.0-chrome` folder.**
 
 <p align="center">
   <img src="docs/select-folder.png" width="600" alt="Select the extension folder" />
 </p>
 
-**4. Pin Sierra to your toolbar for one-click access.**
+**6. Pin Sierra to your toolbar for one-click access.**
 
 <p align="center">
   <img src="docs/pin-extension.png" width="320" alt="Pin Sierra extension" />
