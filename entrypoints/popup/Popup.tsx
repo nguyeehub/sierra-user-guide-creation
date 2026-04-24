@@ -4,7 +4,6 @@ import type { Session, StateResponse } from '@/lib/types';
 import {
   ChevronRight,
   Clock,
-  MountainMark,
   Play,
   Sparkles,
   Square,
@@ -59,7 +58,7 @@ export default function Popup() {
       <header className="pop-head">
         <span className="sierra-brand">
           <span className="sierra-logomark" aria-hidden="true">
-            <MountainMark size={16} />
+            <img src="/icon/48.png" alt="" />
           </span>
           <span className="sierra-wordmark">Sierra</span>
         </span>

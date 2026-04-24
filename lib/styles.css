@@ -124,19 +124,15 @@ textarea {
 .sierra-logomark {
   width: 28px;
   height: 28px;
-  border-radius: 8px;
-  background: linear-gradient(135deg, #0f172a 0%, #1e293b 40%, #2563eb 100%);
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  box-shadow: var(--shadow-sm);
-  color: #fff;
 }
-@media (prefers-color-scheme: dark) {
-  .sierra-logomark {
-    background: linear-gradient(135deg, #f8fafc 0%, #cbd5e1 40%, #60a5fa 100%);
-    color: #0f172a;
-  }
+.sierra-logomark img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  display: block;
 }
 .sierra-wordmark {
   font-size: 16px;

@@ -407,7 +407,7 @@ function Shell({ children }: { children: React.ReactNode }) {
         <div className="ed-topbar-inner">
           <a href="#" className="sierra-brand" aria-label="Sierra home">
             <span className="sierra-logomark" aria-hidden="true">
-              <MountainMark size={16} />
+              <img src="/icon/48.png" alt="" />
             </span>
             <span className="sierra-wordmark">Sierra</span>
           </a>
