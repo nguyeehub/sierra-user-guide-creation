@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   DndContext,
   PointerSensor,
@@ -29,9 +29,11 @@ import { exportSession, type ExportFormat } from '@/lib/export';
 import type { NavEvent, Session, Step } from '@/lib/types';
 import {
   ArrowLeft,
+  Check,
   ChevronRight,
   Clock,
   Code,
+  Crop,
   ExternalLink,
   FileText,
   GripVertical,
@@ -40,6 +42,7 @@ import {
   Plus,
   Sparkles,
   Trash,
+  X as XIcon,
 } from '@/lib/icons';
 import './editor.css';
 
@@ -133,6 +136,34 @@ export default function Editor() {
     if (!step) return;
     const { previewUrl: _p, ...rest } = step;
     void updateStep({ ...rest, note: next });
+  }
+
+  async function cropStep(id: string, frac: { x: number; y: number; w: number; h: number }) {
+    const step = steps.find((s) => s.id === id);
+    if (!step) return;
+    const cropped = await cropImageBlob(step.image, frac);
+    if (!cropped) return;
+    const dpr = step.dpr || 1;
+    const cropPxW = cropped.width;
+    const cropPxH = cropped.height;
+    const offsetXCss = (frac.x * (cropPxW / frac.w)) / dpr;
+    const offsetYCss = (frac.y * (cropPxH / frac.h)) / dpr;
+    const newRect = {
+      x: step.rect.x - offsetXCss,
+      y: step.rect.y - offsetYCss,
+      w: step.rect.w,
+      h: step.rect.h,
+    };
+    const { previewUrl: _p, ...rest } = step;
+    const nextRaw: Step = { ...rest, image: cropped.blob, rect: newRect };
+    await updateStep(nextRaw);
+    setSteps((list) =>
+      list.map((s) => {
+        if (s.id !== id) return s;
+        URL.revokeObjectURL(s.previewUrl);
+        return { ...nextRaw, previewUrl: URL.createObjectURL(cropped.blob) };
+      }),
+    );
   }
 
   async function removeStep(id: string) {
@@ -341,6 +372,7 @@ export default function Editor() {
                       index={i}
                       onCaption={editCaption}
                       onNote={editNote}
+                      onCrop={cropStep}
                       onDelete={removeStep}
                     />
                     {after.map((n) => (
@@ -521,14 +553,20 @@ function StepCard({
   index,
   onCaption,
   onNote,
+  onCrop,
   onDelete,
 }: {
   step: StepView;
   index: number;
   onCaption: (id: string, c: string) => void;
   onNote: (id: string, note: string) => void;
+  onCrop: (
+    id: string,
+    frac: { x: number; y: number; w: number; h: number },
+  ) => void;
   onDelete: (id: string) => void;
 }) {
+  const [cropping, setCropping] = useState(false);
   const {
     attributes,
     listeners,
@@ -574,6 +612,15 @@ function StepCard({
         <button
           type="button"
           className="btn btn-ghost btn-icon"
+          onClick={() => setCropping((v) => !v)}
+          aria-label={cropping ? 'Cancel crop' : 'Crop screenshot'}
+          title={cropping ? 'Cancel crop' : 'Crop screenshot'}
+        >
+          {cropping ? <XIcon size={14} /> : <Crop size={14} />}
+        </button>
+        <button
+          type="button"
+          className="btn btn-ghost btn-icon"
           onClick={() => onDelete(step.id)}
           aria-label="Delete step"
           title="Delete step"
@@ -588,6 +635,15 @@ function StepCard({
           alt={step.caption}
           loading="lazy"
         />
+        {cropping && (
+          <CropOverlay
+            onCancel={() => setCropping(false)}
+            onApply={(frac) => {
+              setCropping(false);
+              onCrop(step.id, frac);
+            }}
+          />
+        )}
       </div>
 
       {noteOpen ? (
@@ -634,4 +690,131 @@ function StepCard({
       </a>
     </li>
   );
+}
+
+type Frac = { x: number; y: number; w: number; h: number };
+
+function CropOverlay({
+  onApply,
+  onCancel,
+}: {
+  onApply: (frac: Frac) => void;
+  onCancel: () => void;
+}) {
+  const ref = useRef<HTMLDivElement | null>(null);
+  const [sel, setSel] = useState<Frac | null>(null);
+  const dragRef = useRef<{ startX: number; startY: number } | null>(null);
+
+  function clientToFrac(clientX: number, clientY: number): { x: number; y: number } {
+    const el = ref.current!;
+    const r = el.getBoundingClientRect();
+    const x = Math.min(Math.max((clientX - r.left) / r.width, 0), 1);
+    const y = Math.min(Math.max((clientY - r.top) / r.height, 0), 1);
+    return { x, y };
+  }
+
+  function onPointerDown(e: React.PointerEvent) {
+    if (e.button !== 0) return;
+    (e.target as HTMLElement).setPointerCapture(e.pointerId);
+    const p = clientToFrac(e.clientX, e.clientY);
+    dragRef.current = { startX: p.x, startY: p.y };
+    setSel({ x: p.x, y: p.y, w: 0, h: 0 });
+  }
+
+  function onPointerMove(e: React.PointerEvent) {
+    if (!dragRef.current) return;
+    const p = clientToFrac(e.clientX, e.clientY);
+    const { startX, startY } = dragRef.current;
+    setSel({
+      x: Math.min(startX, p.x),
+      y: Math.min(startY, p.y),
+      w: Math.abs(p.x - startX),
+      h: Math.abs(p.y - startY),
+    });
+  }
+
+  function onPointerUp() {
+    dragRef.current = null;
+  }
+
+  const ready = !!sel && sel.w > 0.005 && sel.h > 0.005;
+
+  return (
+    <div className="ed-crop-layer" ref={ref}>
+      <div
+        className="ed-crop-surface"
+        onPointerDown={onPointerDown}
+        onPointerMove={onPointerMove}
+        onPointerUp={onPointerUp}
+        onPointerCancel={onPointerUp}
+      />
+      {sel && (
+        <div
+          className="ed-crop-sel"
+          style={{
+            left: `${sel.x * 100}%`,
+            top: `${sel.y * 100}%`,
+            width: `${sel.w * 100}%`,
+            height: `${sel.h * 100}%`,
+          }}
+        />
+      )}
+      <div className="ed-crop-hint">
+        {ready ? 'Apply or drag again to redraw' : 'Drag to select a crop region'}
+      </div>
+      <div className="ed-crop-actions">
+        <button
+          type="button"
+          className="btn btn-ghost"
+          onClick={onCancel}
+        >
+          <XIcon size={14} />
+          Cancel
+        </button>
+        <button
+          type="button"
+          className="btn btn-accent"
+          disabled={!ready}
+          onClick={() => ready && onApply(sel!)}
+        >
+          <Check size={14} />
+          Apply crop
+        </button>
+      </div>
+    </div>
+  );
+}
+
+async function cropImageBlob(
+  blob: Blob,
+  frac: Frac,
+): Promise<{ blob: Blob; width: number; height: number } | null> {
+  const bitmap = await createImageBitmap(blob);
+  const sx = Math.round(frac.x * bitmap.width);
+  const sy = Math.round(frac.y * bitmap.height);
+  const sw = Math.max(1, Math.round(frac.w * bitmap.width));
+  const sh = Math.max(1, Math.round(frac.h * bitmap.height));
+  const canvas =
+    typeof OffscreenCanvas !== 'undefined'
+      ? new OffscreenCanvas(sw, sh)
+      : Object.assign(document.createElement('canvas'), {
+          width: sw,
+          height: sh,
+        });
+  const ctx = (canvas as HTMLCanvasElement | OffscreenCanvas).getContext(
+    '2d',
+  ) as CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D | null;
+  if (!ctx) return null;
+  ctx.drawImage(bitmap, sx, sy, sw, sh, 0, 0, sw, sh);
+  const out =
+    canvas instanceof OffscreenCanvas
+      ? await canvas.convertToBlob({ type: 'image/png' })
+      : await new Promise<Blob>((resolve, reject) => {
+          (canvas as HTMLCanvasElement).toBlob(
+            (b) => (b ? resolve(b) : reject(new Error('toBlob failed'))),
+            'image/png',
+          );
+        });
+  bitmap.close?.();
+  return { blob: out, width: sw, height: sh };
 }

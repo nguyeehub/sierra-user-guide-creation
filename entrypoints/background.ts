@@ -1,10 +1,25 @@
 import { addNav, addStep, countSteps, createSession, lastNavUrl } from '@/lib/db';
 import { buildCaption } from '@/lib/selector';
 import type { ClickMessage, NavEvent, Step } from '@/lib/types';
+import { checkForUpdate } from '@/lib/update';
+
+const UPDATE_ALARM = 'sierra:update-check';
+const UPDATE_PERIOD_MIN = 360; // 6h
 
 export default defineBackground(() => {
   browser.runtime.onInstalled.addListener(() => {
     browser.action.setBadgeBackgroundColor({ color: '#2563eb' });
+    void checkForUpdate();
+    browser.alarms.create(UPDATE_ALARM, { periodInMinutes: UPDATE_PERIOD_MIN });
+  });
+
+  browser.runtime.onStartup?.addListener(() => {
+    void checkForUpdate();
+    browser.alarms.create(UPDATE_ALARM, { periodInMinutes: UPDATE_PERIOD_MIN });
+  });
+
+  browser.alarms.onAlarm.addListener((alarm) => {
+    if (alarm.name === UPDATE_ALARM) void checkForUpdate();
   });
 
   browser.action.onClicked.addListener(() => {
@@ -32,6 +47,10 @@ export default defineBackground(() => {
     }
     if (msg.type === 'sierra:state') {
       getState().then(sendResponse);
+      return true;
+    }
+    if (msg.type === 'sierra:check-update') {
+      checkForUpdate().then(sendResponse);
       return true;
     }
     return false;
@@ -144,10 +163,11 @@ export default defineBackground(() => {
       h: msg.rect.h * dpr,
     };
     const pad = 6 * dpr;
+    const color = await getHighlightColor();
     ctx.save();
-    ctx.strokeStyle = '#2563eb';
+    ctx.strokeStyle = color;
     ctx.lineWidth = 4 * dpr;
-    ctx.shadowColor = 'rgba(37,99,235,0.45)';
+    ctx.shadowColor = hexToRgba(color, 0.45);
     ctx.shadowBlur = 14 * dpr;
     roundRect(
       ctx,
@@ -177,6 +197,19 @@ export default defineBackground(() => {
     };
     await addStep(step);
     console.log('[sierra/bg] saved step', step.id, 'order', step.order);
+  }
+
+  async function getHighlightColor(): Promise<string> {
+    const { highlightColor } = await browser.storage.local.get('highlightColor');
+    const c = typeof highlightColor === 'string' ? highlightColor : '';
+    return /^#[0-9a-fA-F]{6}$/.test(c) ? c : '#2563eb';
+  }
+
+  function hexToRgba(hex: string, a: number): string {
+    const m = /^#([0-9a-fA-F]{6})$/.exec(hex);
+    if (!m) return `rgba(37,99,235,${a})`;
+    const n = parseInt(m[1]!, 16);
+    return `rgba(${(n >> 16) & 255},${(n >> 8) & 255},${n & 255},${a})`;
   }
 
   function roundRect(

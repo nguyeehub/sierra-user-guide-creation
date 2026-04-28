@@ -6,7 +6,7 @@ export default defineConfig({
     name: 'Sierra',
     description:
       'Capture kit for AI article writers — record any click-through and hand the annotated bundle to your AI agent.',
-    permissions: ['activeTab', 'storage', 'tabs'],
+    permissions: ['activeTab', 'storage', 'tabs', 'alarms'],
     host_permissions: ['<all_urls>'],
     action: { default_title: 'Sierra' },
     web_accessible_resources: [

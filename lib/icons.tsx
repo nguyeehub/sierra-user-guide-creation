@@ -146,6 +146,32 @@ export function ChevronRight(p: IconProps) {
   );
 }
 
+export function Crop(p: IconProps) {
+  return (
+    <svg {...base(p)}>
+      <path d="M6 2v14a2 2 0 0 0 2 2h14" />
+      <path d="M18 22V8a2 2 0 0 0-2-2H2" />
+    </svg>
+  );
+}
+
+export function Check(p: IconProps) {
+  return (
+    <svg {...base(p)}>
+      <polyline points="20 6 9 17 4 12" />
+    </svg>
+  );
+}
+
+export function X(p: IconProps) {
+  return (
+    <svg {...base(p)}>
+      <line x1="18" y1="6" x2="6" y2="18" />
+      <line x1="6" y1="6" x2="18" y2="18" />
+    </svg>
+  );
+}
+
 export function ExternalLink(p: IconProps) {
   return (
     <svg {...base(p)}>
